@@ -537,7 +537,7 @@ td.summary-col {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-td.summary-col .summary-text { cursor: help; }
+td.summary-col .summary-text { text-decoration: underline dotted #aaa; text-underline-offset: 3px; }
 
 /* ---------- Badges ---------- */
 .badge {
@@ -571,22 +571,41 @@ td.summary-col .summary-text { cursor: help; }
 }
 
 /* ---------- Tooltip ---------- */
-.tooltip-wrap { position: relative; }
+.tooltip-wrap { position: relative; cursor: pointer; }
 .tooltip-content {
   display: none;
   position: absolute;
-  bottom: 100%;
+  top: calc(100% + 6px);
   left: 0;
-  background: #1a1a2e;
-  color: #eee;
-  padding: 10px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  line-height: 1.5;
-  max-width: 400px;
+  background: #fff;
+  color: var(--text);
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.6;
+  min-width: 300px;
+  max-width: 450px;
   white-space: pre-wrap;
+  word-wrap: break-word;
   z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0,0,0,.25);
+  box-shadow: 0 6px 20px rgba(0,0,0,.15);
+  border: 1px solid var(--border);
+}
+.tooltip-content::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 20px;
+  border: 6px solid transparent;
+  border-bottom-color: var(--border);
+}
+.tooltip-content::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 21px;
+  border: 5px solid transparent;
+  border-bottom-color: #fff;
 }
 .tooltip-wrap:hover .tooltip-content { display: block; }
 
