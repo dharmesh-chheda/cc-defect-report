@@ -67,17 +67,20 @@ async function jiraFetch(path) {
 
 async function fetchEpicIssues(epicKey) {
   const issues = [];
-  let startAt = 0;
   const maxResults = 100;
+  let nextPageToken = null;
 
   while (true) {
     const jql = encodeURIComponent(`parent = ${epicKey} ORDER BY created DESC`);
-    const data = await jiraFetch(
-      `/search?jql=${jql}&startAt=${startAt}&maxResults=${maxResults}&fields=key,summary,description,priority,status,created,assignee,reporter,updated`
-    );
+    const fields = "key,summary,description,priority,status,created,assignee,reporter,updated";
+    let path = `/search/jql?jql=${jql}&maxResults=${maxResults}&fields=${fields}`;
+    if (nextPageToken) {
+      path += `&nextPageToken=${encodeURIComponent(nextPageToken)}`;
+    }
+    const data = await jiraFetch(path);
     issues.push(...data.issues);
-    if (startAt + maxResults >= data.total) break;
-    startAt += maxResults;
+    if (!data.nextPageToken || data.issues.length < maxResults) break;
+    nextPageToken = data.nextPageToken;
   }
 
   return issues;
