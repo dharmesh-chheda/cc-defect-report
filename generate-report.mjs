@@ -1309,6 +1309,13 @@ document.getElementById("refreshBtn").addEventListener("click", async () => {
   btn.disabled = true;
   btn.classList.add("loading");
 
+  // Cache-busting reload: append a timestamp query param to force fresh fetch
+  function hardReload() {
+    const url = new URL(location.href.split("?")[0]);
+    url.searchParams.set("_t", Date.now());
+    location.replace(url.toString());
+  }
+
   if (isLocalServe()) {
     try {
       const res = await fetch("/api/refresh", { method: "POST" });
@@ -1322,31 +1329,18 @@ document.getElementById("refreshBtn").addEventListener("click", async () => {
       btn.classList.remove("loading");
       return;
     }
-    window.location.reload();
+    hardReload();
     return;
   }
 
   // For file:// or any non-http context, just reload
   if (location.protocol !== "https:" && location.protocol !== "http:") {
-    window.location.reload();
+    hardReload();
     return;
   }
 
-  // GitHub Pages: check if newer data is available and reload
-  try {
-    const res = await fetch(location.href, { cache: "no-store" });
-    const html = await res.text();
-    const match = html.match(/const GENERATED_AT = "([^"]+)"/);
-    if (match && match[1] !== GENERATED_AT) {
-      window.location.reload();
-    } else {
-      alert("Data is already up to date (last refreshed " + timeAgo(GENERATED_AT) + ").\\nData auto-refreshes every 5 minutes via the backend.");
-      btn.disabled = false;
-      btn.classList.remove("loading");
-    }
-  } catch (err) {
-    window.location.reload();
-  }
+  // GitHub Pages: always do a cache-busted reload to get the latest deployed version
+  hardReload();
 });
 
 // ===========================================================================
