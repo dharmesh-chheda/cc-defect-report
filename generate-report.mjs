@@ -176,7 +176,11 @@ function parseDescription(descriptionAdf) {
     descriptionText = fullText.trim() || null;
   }
 
-  return { reporter, urgency, description: descriptionText };
+  // Extract Slack thread link from anywhere in the text
+  const slackMatch = fullText.match(/(https:\/\/nubank\.slack\.com\/archives\/[^\s<>)]+)/);
+  const slackLink = slackMatch ? slackMatch[1] : null;
+
+  return { reporter, urgency, description: descriptionText, slackLink };
 }
 
 // ---------------------------------------------------------------------------
@@ -201,6 +205,7 @@ function normaliseIssue(issue, bucketLabel) {
     reportedBy: parsed.reporter || fields.reporter?.displayName || "Unknown",
     urgency: parsed.urgency,
     descriptionText: parsed.description,
+    slackLink: parsed.slackLink,
     bucket: bucketLabel,
   };
 }
@@ -515,6 +520,17 @@ td.key-col a {
   font-size: 12px;
 }
 td.key-col a:hover { text-decoration: underline; }
+.slack-link {
+  color: #611f69;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #f3e8f9;
+}
+.slack-link:hover { background: #611f69; color: #fff; }
+.no-link { color: #ccc; }
 td.summary-col {
   max-width: 400px;
   overflow: hidden;
@@ -882,6 +898,7 @@ function renderTableHead(containerId) {
     { key: "created", label: "Reported On" },
     { key: "status", label: "Status" },
     { key: "assignee", label: "Assigned To" },
+    { key: "slack", label: "Slack" },
   ];
   const thead = document.getElementById(containerId);
   thead.innerHTML = "<tr>" + cols.map(c => {
@@ -932,6 +949,7 @@ function renderTableBody(containerId, issues, emptyId) {
       <td>\${formatDate(i.created)}</td>
       <td><span class="\${statusBadgeClass(i.status)}">\${escapeHtml(i.status)}</span></td>
       <td>\${escapeHtml(i.assignee)}</td>
+      <td>\${i.slackLink ? '<a href="' + escapeHtml(i.slackLink) + '" target="_blank" rel="noopener" class="slack-link">thread</a>' : '<span class="no-link">—</span>'}</td>
     </tr>\`;
   }).join("");
 }
