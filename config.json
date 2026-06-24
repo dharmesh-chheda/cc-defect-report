@@ -4,8 +4,8 @@
     "apiPath": "/rest/api/3"
   },
   "github": {
-    "owner": "",
-    "repo": "",
+    "owner": "dharmesh-chheda",
+    "repo": "cc-defect-report",
     "workflowFile": "refresh.yml"
   },
   "epics": [
