@@ -1309,26 +1309,35 @@ document.getElementById("refreshBtn").addEventListener("click", async () => {
   btn.disabled = true;
   btn.classList.add("loading");
 
-  try {
-    if (isLocalServe()) {
-      // Local --serve mode: hit the local API directly
+  if (isLocalServe()) {
+    try {
       const res = await fetch("/api/refresh", { method: "POST" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Refresh failed (" + res.status + ")");
       }
-      window.location.reload();
+    } catch (err) {
+      alert("Refresh error: " + err.message);
+      btn.disabled = false;
+      btn.classList.remove("loading");
       return;
     }
+    window.location.reload();
+    return;
+  }
 
-    // GitHub Pages: check if newer data is available and reload
-    // Data auto-refreshes every 5 min via GitHub Actions
+  // For file:// or any non-http context, just reload
+  if (location.protocol !== "https:" && location.protocol !== "http:") {
+    window.location.reload();
+    return;
+  }
+
+  // GitHub Pages: check if newer data is available and reload
+  try {
     const res = await fetch(location.href, { cache: "no-store" });
     const html = await res.text();
     const match = html.match(/const GENERATED_AT = "([^"]+)"/);
-
     if (match && match[1] !== GENERATED_AT) {
-      // Newer version available — reload
       window.location.reload();
     } else {
       alert("Data is already up to date (last refreshed " + timeAgo(GENERATED_AT) + ").\\nData auto-refreshes every 5 minutes via the backend.");
@@ -1336,9 +1345,7 @@ document.getElementById("refreshBtn").addEventListener("click", async () => {
       btn.classList.remove("loading");
     }
   } catch (err) {
-    alert("Refresh error: " + err.message);
-    btn.disabled = false;
-    btn.classList.remove("loading");
+    window.location.reload();
   }
 });
 
