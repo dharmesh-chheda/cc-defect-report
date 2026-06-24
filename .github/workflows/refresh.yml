@@ -4,9 +4,9 @@ on:
   # Manual trigger from GitHub UI or API
   workflow_dispatch:
 
-  # Auto-refresh every 2 hours during business hours (Mon-Fri, 9am-7pm ET)
+  # Auto-refresh every 5 minutes
   schedule:
-    - cron: "17 13-23/2 * * 1-5" # UTC offset for ET
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: write
