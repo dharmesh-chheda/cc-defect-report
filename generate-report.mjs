@@ -405,7 +405,6 @@ body {
   font-weight: 500;
 }
 .refresh-info a:hover { text-decoration: underline; }
-/* Local --serve mode only */
 .refresh-btn {
   padding: 8px 18px;
   border-radius: var(--radius);
@@ -416,7 +415,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: all .15s;
-  display: none; /* hidden by default, shown in local serve mode */
+  display: flex;
   align-items: center;
   gap: 6px;
 }
@@ -673,7 +672,6 @@ td.summary-col .summary-text { cursor: help; }
   <div class="refresh-info" id="refreshInfo">
     <span class="refresh-dot"></span>
     <span>Updated <span id="refreshAge"></span></span>
-    <span id="refreshLink"></span>
   </div>
   <button class="refresh-btn" id="refreshBtn"><span class="refresh-icon">&#x21bb;</span><span class="spinner"></span> Refresh</button>
   <button class="export-btn" id="exportBtn">Export Executive Summary</button>
@@ -1257,11 +1255,8 @@ function downloadSlideDeck() {
 }
 
 // ===========================================================================
-// Refresh / last-updated display
+// Refresh
 // ===========================================================================
-const GITHUB_OWNER = CONFIG.github?.owner || "";
-const GITHUB_REPO  = CONFIG.github?.repo  || "";
-
 function isLocalServe() {
   return location.hostname === "localhost" || location.hostname === "127.0.0.1";
 }
@@ -1277,42 +1272,48 @@ function timeAgo(dateStr) {
   return days + "d ago";
 }
 
-// Show "Updated Xh ago" + appropriate link
-(function initRefreshInfo() {
+document.getElementById("refreshAge").textContent = timeAgo(GENERATED_AT);
+setInterval(() => {
   document.getElementById("refreshAge").textContent = timeAgo(GENERATED_AT);
+}, 60000);
 
-  const linkEl = document.getElementById("refreshLink");
-  if (isLocalServe()) {
-    // Show the live Refresh button in local --serve mode
-    const btn = document.getElementById("refreshBtn");
-    btn.style.display = "flex";
-    btn.addEventListener("click", async () => {
-      btn.disabled = true;
-      btn.classList.add("loading");
-      try {
-        const res = await fetch("/api/refresh", { method: "POST" });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || "Refresh failed (" + res.status + ")");
-        }
-        window.location.reload();
-      } catch (err) {
-        alert("Refresh error: " + err.message);
-        btn.disabled = false;
-        btn.classList.remove("loading");
+document.getElementById("refreshBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  btn.classList.add("loading");
+
+  try {
+    if (isLocalServe()) {
+      // Local --serve mode: hit the local API directly
+      const res = await fetch("/api/refresh", { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Refresh failed (" + res.status + ")");
       }
-    });
-  } else if (GITHUB_OWNER && GITHUB_REPO) {
-    // GitHub Pages: show link to manually trigger the workflow
-    linkEl.innerHTML = '· <a href="https://github.com/' + GITHUB_OWNER + '/' + GITHUB_REPO +
-      '/actions/workflows/refresh.yml" target="_blank" rel="noopener">Trigger refresh</a>';
-  }
+      window.location.reload();
+      return;
+    }
 
-  // Update the "Xh ago" text every minute
-  setInterval(() => {
-    document.getElementById("refreshAge").textContent = timeAgo(GENERATED_AT);
-  }, 60000);
-})();
+    // GitHub Pages: check if newer data is available and reload
+    // Data auto-refreshes every 5 min via GitHub Actions
+    const res = await fetch(location.href, { cache: "no-store" });
+    const html = await res.text();
+    const match = html.match(/const GENERATED_AT = "([^"]+)"/);
+
+    if (match && match[1] !== GENERATED_AT) {
+      // Newer version available — reload
+      window.location.reload();
+    } else {
+      alert("Data is already up to date (last refreshed " + timeAgo(GENERATED_AT) + ").\\nData auto-refreshes every 5 minutes via the backend.");
+      btn.disabled = false;
+      btn.classList.remove("loading");
+    }
+  } catch (err) {
+    alert("Refresh error: " + err.message);
+    btn.disabled = false;
+    btn.classList.remove("loading");
+  }
+});
 
 // ===========================================================================
 // Init
