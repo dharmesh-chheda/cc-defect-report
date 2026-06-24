@@ -485,7 +485,7 @@ body {
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  overflow: hidden;
+  overflow: visible;
 }
 table {
   width: 100%;
@@ -533,11 +533,18 @@ td.key-col a:hover { text-decoration: underline; }
 .no-link { color: #ccc; }
 td.summary-col {
   max-width: 400px;
+  position: relative;
+}
+td.summary-col .summary-text {
+  display: inline-block;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  vertical-align: middle;
+  text-decoration: underline dotted #aaa;
+  text-underline-offset: 3px;
 }
-td.summary-col .summary-text { text-decoration: underline dotted #aaa; text-underline-offset: 3px; }
 
 /* ---------- Badges ---------- */
 .badge {
@@ -571,12 +578,10 @@ td.summary-col .summary-text { text-decoration: underline dotted #aaa; text-unde
 }
 
 /* ---------- Tooltip ---------- */
-.tooltip-wrap { position: relative; cursor: pointer; }
-.tooltip-content {
+.tooltip-wrap { cursor: pointer; }
+#tooltip-popup {
   display: none;
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
+  position: fixed;
   background: #fff;
   color: var(--text);
   padding: 14px 18px;
@@ -587,27 +592,11 @@ td.summary-col .summary-text { text-decoration: underline dotted #aaa; text-unde
   max-width: 450px;
   white-space: pre-wrap;
   word-wrap: break-word;
-  z-index: 1000;
+  z-index: 10000;
   box-shadow: 0 6px 20px rgba(0,0,0,.15);
   border: 1px solid var(--border);
+  pointer-events: none;
 }
-.tooltip-content::before {
-  content: "";
-  position: absolute;
-  bottom: 100%;
-  left: 20px;
-  border: 6px solid transparent;
-  border-bottom-color: var(--border);
-}
-.tooltip-content::after {
-  content: "";
-  position: absolute;
-  bottom: 100%;
-  left: 21px;
-  border: 5px solid transparent;
-  border-bottom-color: #fff;
-}
-.tooltip-wrap:hover .tooltip-content { display: block; }
 
 /* ---------- Search ---------- */
 .search-box {
@@ -736,6 +725,9 @@ td.summary-col .summary-text { text-decoration: underline dotted #aaa; text-unde
   </div>
   <div class="empty-state" id="backlogEmpty" style="display:none">No backlog defects.</div>
 </div>
+
+<!-- ===== Tooltip ===== -->
+<div id="tooltip-popup"></div>
 
 <!-- ===== Export Modal ===== -->
 <div class="modal-overlay" id="exportModal">
@@ -955,10 +947,8 @@ function renderTableBody(containerId, issues, emptyId) {
 
   tbody.innerHTML = issues.map(i => {
     const urgencyBadge = i.urgency ? \`<span class="badge badge-urgency">\${escapeHtml(i.urgency)}</span>\` : "";
-    const tooltipText = i.descriptionText ? escapeHtml(i.descriptionText.substring(0, 300)) : "";
-    const summaryCell = tooltipText
-      ? \`<td class="summary-col"><span class="tooltip-wrap"><span class="summary-text">\${escapeHtml(i.summary)}\${urgencyBadge}</span><span class="tooltip-content">\${tooltipText}</span></span></td>\`
-      : \`<td class="summary-col">\${escapeHtml(i.summary)}\${urgencyBadge}</td>\`;
+    const tooltipAttr = i.descriptionText ? \` data-tooltip="\${escapeHtml(i.descriptionText.substring(0, 300))}"\` : "";
+    const summaryCell = \`<td class="summary-col"><span class="tooltip-wrap summary-text"\${tooltipAttr}>\${escapeHtml(i.summary)}\${urgencyBadge}</span></td>\`;
 
     return \`<tr>
       <td><span class="\${priorityBadgeClass(i.priority)}">\${escapeHtml(i.priority)}</span></td>
@@ -1350,6 +1340,32 @@ document.getElementById("refreshBtn").addEventListener("click", async () => {
     btn.disabled = false;
     btn.classList.remove("loading");
   }
+});
+
+// ===========================================================================
+// Tooltip (fixed positioning to escape overflow containers)
+// ===========================================================================
+const tooltipEl = document.getElementById("tooltip-popup");
+document.addEventListener("mouseover", (e) => {
+  const target = e.target.closest("[data-tooltip]");
+  if (!target) return;
+  const text = target.getAttribute("data-tooltip");
+  if (!text) return;
+  tooltipEl.textContent = text;
+  tooltipEl.style.display = "block";
+  const rect = target.getBoundingClientRect();
+  let top = rect.bottom + 8;
+  let left = rect.left;
+  // Keep within viewport
+  if (left + 450 > window.innerWidth) left = window.innerWidth - 460;
+  if (left < 10) left = 10;
+  if (top + tooltipEl.offsetHeight > window.innerHeight) top = rect.top - tooltipEl.offsetHeight - 8;
+  tooltipEl.style.top = top + "px";
+  tooltipEl.style.left = left + "px";
+});
+document.addEventListener("mouseout", (e) => {
+  const target = e.target.closest("[data-tooltip]");
+  if (target) tooltipEl.style.display = "none";
 });
 
 // ===========================================================================
