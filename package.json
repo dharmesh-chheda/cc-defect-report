@@ -1,0 +1,11 @@
+{
+  "name": "cc-defect-report",
+  "version": "1.0.0",
+  "description": "CC Release Defect Portal - generates an interactive HTML dashboard from Jira data",
+  "type": "module",
+  "scripts": {
+    "generate": "node generate-report.mjs",
+    "serve": "node generate-report.mjs --serve"
+  },
+  "dependencies": {}
+}

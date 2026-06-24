@@ -1,0 +1,40 @@
+name: Refresh Defect Portal
+
+on:
+  # Manual trigger from GitHub UI or API
+  workflow_dispatch:
+
+  # Auto-refresh every 2 hours during business hours (Mon-Fri, 9am-7pm ET)
+  schedule:
+    - cron: "17 13-23/2 * * 1-5" # UTC offset for ET
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Fetch data from Jira and generate portal
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          # Remove cached files so it fetches live from Jira
+          rm -f raw-MRC-*.json
+          node generate-report.mjs
+
+      - name: Commit and push updated portal
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          # Only commit if there are changes
+          git diff --staged --quiet || git commit -m "chore: refresh defect portal data $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push

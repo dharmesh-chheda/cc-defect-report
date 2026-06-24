@@ -1,0 +1,36 @@
+{
+  "jira": {
+    "baseUrl": "https://nubank.atlassian.net",
+    "apiPath": "/rest/api/3"
+  },
+  "github": {
+    "owner": "",
+    "repo": "",
+    "workflowFile": "refresh.yml"
+  },
+  "epics": [
+    {
+      "key": "MRC-2927",
+      "label": "Post Alpha Release",
+      "shortLabel": "Post Alpha"
+    },
+    {
+      "key": "MRC-4417",
+      "label": "Beta Staging",
+      "shortLabel": "Beta Staging"
+    },
+    {
+      "key": "MRC-5537",
+      "label": "Beta Production",
+      "shortLabel": "Beta Prod"
+    }
+  ],
+  "statusCategories": {
+    "backlog": ["Backlog", "To Do", "Open"],
+    "inProgress": ["In Progress", "In Development", "In Review", "Review"],
+    "blocked": ["Blocked", "Impediment", "On Hold"],
+    "inValidation": ["In Validation", "In QA", "In Testing", "Ready for QA"],
+    "done": ["Done", "Closed", "Resolved", "Complete", "Canceled"]
+  },
+  "priorityOrder": ["Highest", "High", "Medium", "Low", "Lowest"]
+}
