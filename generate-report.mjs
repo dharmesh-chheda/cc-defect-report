@@ -138,11 +138,12 @@ function parseDescription(descriptionAdf) {
       /^(?:reporter|reported\s*by)\s*[:\-]\s*(.+)/i
     );
     if (reporterInline) {
-      reporter = reporterInline[1].trim();
+      reporter = reporterInline[1].replace(/\s*\(ID:.*$/, "").trim();
       continue;
     }
     if (/^(?:reporter|reported\s*by)\s*$/i.test(line)) {
-      reporter = nextNonEmpty(i);
+      const val = nextNonEmpty(i);
+      reporter = val ? val.replace(/\s*\(ID:.*$/, "").trim() : val;
       continue;
     }
 
