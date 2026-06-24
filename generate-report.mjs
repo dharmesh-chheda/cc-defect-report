@@ -379,6 +379,30 @@ body {
 }
 .export-btn:hover { background: var(--primary); color: #fff; }
 
+.refresh-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 6px 14px;
+  box-shadow: var(--shadow);
+}
+.refresh-info .refresh-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+.refresh-info a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+.refresh-info a:hover { text-decoration: underline; }
+/* Local --serve mode only */
 .refresh-btn {
   padding: 8px 18px;
   border-radius: var(--radius);
@@ -389,7 +413,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: all .15s;
-  display: flex;
+  display: none; /* hidden by default, shown in local serve mode */
   align-items: center;
   gap: 6px;
 }
@@ -643,7 +667,12 @@ td.summary-col .summary-text { cursor: help; }
   <div class="bucket-tabs" id="bucketTabs"></div>
   <div class="spacer"></div>
   <input type="text" class="search-box" id="searchBox" placeholder="Search tickets...">
-  <button class="refresh-btn" id="refreshBtn"><span class="refresh-icon">&#x21bb;</span><span class="spinner"></span> Refresh Data</button>
+  <div class="refresh-info" id="refreshInfo">
+    <span class="refresh-dot"></span>
+    <span>Updated <span id="refreshAge"></span></span>
+    <span id="refreshLink"></span>
+  </div>
+  <button class="refresh-btn" id="refreshBtn"><span class="refresh-icon">&#x21bb;</span><span class="spinner"></span> Refresh</button>
   <button class="export-btn" id="exportBtn">Export Executive Summary</button>
 </div>
 
@@ -1225,94 +1254,62 @@ function downloadSlideDeck() {
 }
 
 // ===========================================================================
-// Refresh data
+// Refresh / last-updated display
 // ===========================================================================
 const GITHUB_OWNER = CONFIG.github?.owner || "";
 const GITHUB_REPO  = CONFIG.github?.repo  || "";
-const WORKFLOW     = CONFIG.github?.workflowFile || "refresh.yml";
-const GH_PAT_KEY   = "cc_defect_gh_pat"; // localStorage key
-
-function isGitHubPages() {
-  return location.hostname.endsWith(".github.io") || (GITHUB_OWNER && GITHUB_REPO);
-}
 
 function isLocalServe() {
   return location.hostname === "localhost" || location.hostname === "127.0.0.1";
 }
 
-document.getElementById("refreshBtn").addEventListener("click", async () => {
-  const btn = document.getElementById("refreshBtn");
+function timeAgo(dateStr) {
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + "m ago";
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + "h ago";
+  const days = Math.floor(hours / 24);
+  return days + "d ago";
+}
 
+// Show "Updated Xh ago" + appropriate link
+(function initRefreshInfo() {
+  document.getElementById("refreshAge").textContent = timeAgo(GENERATED_AT);
+
+  const linkEl = document.getElementById("refreshLink");
   if (isLocalServe()) {
-    // --serve mode: hit local API
-    btn.disabled = true;
-    btn.classList.add("loading");
-    try {
-      const res = await fetch("/api/refresh", { method: "POST" });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Refresh failed (" + res.status + ")");
+    // Show the live Refresh button in local --serve mode
+    const btn = document.getElementById("refreshBtn");
+    btn.style.display = "flex";
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      btn.classList.add("loading");
+      try {
+        const res = await fetch("/api/refresh", { method: "POST" });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Refresh failed (" + res.status + ")");
+        }
+        window.location.reload();
+      } catch (err) {
+        alert("Refresh error: " + err.message);
+        btn.disabled = false;
+        btn.classList.remove("loading");
       }
-      window.location.reload();
-    } catch (err) {
-      alert("Refresh error: " + err.message);
-      btn.disabled = false;
-      btn.classList.remove("loading");
-    }
-    return;
+    });
+  } else if (GITHUB_OWNER && GITHUB_REPO) {
+    // GitHub Pages: show link to manually trigger the workflow
+    linkEl.innerHTML = '· <a href="https://github.com/' + GITHUB_OWNER + '/' + GITHUB_REPO +
+      '/actions/workflows/refresh.yml" target="_blank" rel="noopener">Trigger refresh</a>';
   }
 
-  if (!GITHUB_OWNER || !GITHUB_REPO) {
-    alert("Refresh not configured.\\n\\nSet github.owner and github.repo in config.json, then redeploy.");
-    return;
-  }
-
-  // GitHub Pages mode: trigger Actions workflow dispatch
-  let pat = localStorage.getItem(GH_PAT_KEY);
-  if (!pat) {
-    pat = prompt(
-      "Enter a GitHub Personal Access Token (PAT) with \\\"actions:write\\\" scope.\\n\\n" +
-      "This is stored in your browser\\'s localStorage and never sent anywhere except the GitHub API.\\n\\n" +
-      "You can create one at:\\nhttps://github.com/settings/tokens/new?scopes=repo"
-    );
-    if (!pat) return;
-    localStorage.setItem(GH_PAT_KEY, pat.trim());
-  }
-
-  btn.disabled = true;
-  btn.classList.add("loading");
-
-  try {
-    const res = await fetch(
-      "https://api.github.com/repos/" + GITHUB_OWNER + "/" + GITHUB_REPO + "/actions/workflows/" + WORKFLOW + "/dispatches",
-      {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + pat,
-          Accept: "application/vnd.github+json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ref: "main" }),
-      }
-    );
-
-    if (res.status === 401 || res.status === 403) {
-      localStorage.removeItem(GH_PAT_KEY);
-      throw new Error("Invalid or expired token. Click Refresh again to re-enter your PAT.");
-    }
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error("GitHub API " + res.status + ": " + text.substring(0, 200));
-    }
-
-    alert("Refresh triggered! The GitHub Action is now running.\\n\\nThe page will update in 1-2 minutes. Reload to see fresh data.");
-  } catch (err) {
-    alert("Refresh error: " + err.message);
-  } finally {
-    btn.disabled = false;
-    btn.classList.remove("loading");
-  }
-});
+  // Update the "Xh ago" text every minute
+  setInterval(() => {
+    document.getElementById("refreshAge").textContent = timeAgo(GENERATED_AT);
+  }, 60000);
+})();
 
 // ===========================================================================
 // Init
