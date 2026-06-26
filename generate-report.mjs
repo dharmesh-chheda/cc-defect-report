@@ -49,6 +49,15 @@ if (!USE_CACHE && (!EMAIL || !TOKEN)) {
 
 const AUTH = `Basic ${Buffer.from(`${EMAIL}:${TOKEN}`).toString("base64")}`;
 
+// Labels to omit from the Team column (common/noise labels)
+const OMIT_LABELS = new Set([
+  "CC",
+  "troy-cc-beta",
+  "cc-beta",
+  "us-market-support-ticket",
+  "troy-cc-alpha",
+]);
+
 // ---------------------------------------------------------------------------
 // Jira helpers
 // ---------------------------------------------------------------------------
@@ -72,7 +81,7 @@ async function fetchEpicIssues(epicKey) {
 
   while (true) {
     const jql = encodeURIComponent(`parent = ${epicKey} ORDER BY created DESC`);
-    const fields = "key,summary,description,priority,status,created,assignee,reporter,updated";
+    const fields = "key,summary,description,priority,status,created,assignee,reporter,updated,labels";
     let path = `/search/jql?jql=${jql}&maxResults=${maxResults}&fields=${fields}`;
     if (nextPageToken) {
       path += `&nextPageToken=${encodeURIComponent(nextPageToken)}`;
@@ -207,6 +216,9 @@ function normaliseIssue(issue, bucketLabel) {
     urgency: parsed.urgency,
     descriptionText: parsed.description,
     slackLink: parsed.slackLink,
+    labels: (fields.labels || [])
+      .map((l) => l.name || l)
+      .filter((l) => !OMIT_LABELS.has(l)),
     bucket: bucketLabel,
   };
 }
@@ -569,6 +581,7 @@ td.summary-col .summary-text {
 .badge-status-done { background: #e8f5e9; color: #2e7d32; }
 
 .badge-urgency { background: #fce4ec; color: #c62828; font-size: 10px; margin-left: 6px; }
+.badge-label { background: #e8eaf6; color: #283593; font-size: 10px; margin: 1px 2px; }
 
 /* ---------- Empty state ---------- */
 .empty-state {
@@ -860,6 +873,9 @@ function sortIssues(issues, col, dir) {
       case "assignee":
         cmp = a.assignee.localeCompare(b.assignee);
         break;
+      case "labels":
+        cmp = (a.labels || []).join(",").localeCompare((b.labels || []).join(","));
+        break;
       default:
         cmp = 0;
     }
@@ -910,6 +926,7 @@ function renderTableHead(containerId) {
     { key: "created", label: "Reported On" },
     { key: "status", label: "Status" },
     { key: "assignee", label: "Assigned To" },
+    { key: "labels", label: "Team" },
     { key: "slack", label: "Slack" },
   ];
   const thead = document.getElementById(containerId);
@@ -959,6 +976,7 @@ function renderTableBody(containerId, issues, emptyId) {
       <td>\${formatDate(i.created)}</td>
       <td><span class="\${statusBadgeClass(i.status)}">\${escapeHtml(i.status)}</span></td>
       <td>\${escapeHtml(i.assignee)}</td>
+      <td>\${(i.labels || []).map(l => '<span class="badge badge-label">' + escapeHtml(l) + '</span>').join(" ") || '<span class="no-link">—</span>'}</td>
       <td>\${i.slackLink ? '<a href="' + escapeHtml(i.slackLink) + '" target="_blank" rel="noopener" class="slack-link">thread</a>' : '<span class="no-link">—</span>'}</td>
     </tr>\`;
   }).join("");
