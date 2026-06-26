@@ -52,11 +52,18 @@ const AUTH = `Basic ${Buffer.from(`${EMAIL}:${TOKEN}`).toString("base64")}`;
 // Labels to omit from the Team column (common/noise labels)
 const OMIT_LABELS = new Set([
   "CC",
-  "troy-cc-beta",
-  "troy-beta",
+  "Report_a_bug",
+  "bug-reported-from-app",
   "cc-beta",
-  "us-market-support-ticket",
+  "country:US",
+  "package:catalyst_entrypoint",
+  "production",
+  "troy-beta",
   "troy-cc-alpha",
+  "troy-cc-beta",
+  "us-market-support-ticket",
+  "us-market-support-tickets",
+  "ux",
 ]);
 
 // ---------------------------------------------------------------------------
