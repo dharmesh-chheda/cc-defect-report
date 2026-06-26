@@ -53,6 +53,7 @@ const AUTH = `Basic ${Buffer.from(`${EMAIL}:${TOKEN}`).toString("base64")}`;
 const OMIT_LABELS = new Set([
   "CC",
   "troy-cc-beta",
+  "troy-beta",
   "cc-beta",
   "us-market-support-ticket",
   "troy-cc-alpha",
