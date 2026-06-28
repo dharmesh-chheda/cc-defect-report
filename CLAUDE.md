@@ -15,9 +15,9 @@ A defect tracking portal for the US Credit Card release at Nubank. It pulls defe
 
 ## Jira Data Source
 Three parent epics, fetched via `parent = MRC-XXXX` JQL:
-- **MRC-2927** → "Post Alpha Release" bucket (84 issues as of June 26, 2026)
+- **MRC-2927** → "Post Alpha Release" bucket (84 issues as of June 28, 2026)
 - **MRC-4417** → "Beta Staging" bucket (31 issues)
-- **MRC-5537** → "Beta Production" bucket (25 issues)
+- **MRC-5537** → "Beta Production" bucket (31 issues)
 
 **API endpoint**: `/rest/api/3/search/jql` (migrated from deprecated `/search` — do NOT use the old endpoint, it returns 410).
 **Pagination**: uses `nextPageToken`, NOT `startAt`.
@@ -66,6 +66,8 @@ The refresh button uses **cache-busted reload** (`location.replace` with `?_t=<t
 
 Note: GitHub's cron scheduler is unreliable — the 5-minute schedule often doesn't fire on inactive repos. Use `gh workflow run refresh.yml` to trigger manually when needed.
 
+**When user says "refresh the report" or "new cards not showing"**: Run `gh workflow run refresh.yml`, watch with `gh run watch <id> --exit-status`, then tell the user to refresh the browser. The static `index.html` only updates when the workflow regenerates and commits it.
+
 ## Team Column (Labels)
 Jira labels are fetched and displayed in a "Team" column. The following noise labels are omitted (configured in `OMIT_LABELS` in `generate-report.mjs`):
 `CC`, `Report_a_bug`, `bug-reported-from-app`, `cc-beta`, `country:US`, `package:catalyst_entrypoint`, `production`, `troy-beta`, `troy-cc-alpha`, `troy-cc-beta`, `us-market-support-ticket`, `us-market-support-tickets`, `ux`
@@ -106,7 +108,7 @@ node generate-report.mjs
 - The `index.html` is a generated file but IS committed (it's the GitHub Pages artifact)
 - When `index.html` has merge conflicts, just regenerate it with `node generate-report.mjs`
 
-## Merged PRs (as of June 26, 2026)
+## Merged PRs (as of June 28, 2026)
 1. **PR #1**: GitHub repo config (owner/repo in config.json)
 2. **PR #2**: Refresh UX fix + 5-min schedule
 3. **PR #3**: Jira API migration (`/search` → `/search/jql`)
@@ -124,6 +126,7 @@ node generate-report.mjs
 15. **PR #15**: Team column — Jira labels displayed as badges, noise labels filtered
 16. **PR #16**: Omit `troy-beta` from Team labels
 17. **PR #17**: Omit 7 additional noise labels from Team column
+18. **PR #18**: CLAUDE.md updates (Jun 26 session)
 
 ## Known Decisions / Things NOT Implemented
 - **Slack user ID resolution**: Some "Reported By" values are Slack user IDs (e.g., `U026XNZSH89`) not display names. Resolving to names requires a Slack Bot token with `users:read` scope. User declined to implement this.
