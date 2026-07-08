@@ -89,7 +89,7 @@ async function fetchEpicIssues(epicKey) {
 
   while (true) {
     const jql = encodeURIComponent(`parent = ${epicKey} ORDER BY created DESC`);
-    const fields = "key,summary,description,priority,status,created,assignee,reporter,updated,labels";
+    const fields = "key,summary,description,priority,status,created,assignee,reporter,updated,labels,issuetype";
     let path = `/search/jql?jql=${jql}&maxResults=${maxResults}&fields=${fields}`;
     if (nextPageToken) {
       path += `&nextPageToken=${encodeURIComponent(nextPageToken)}`;
@@ -224,6 +224,7 @@ function normaliseIssue(issue, bucketLabel) {
     urgency: parsed.urgency,
     descriptionText: parsed.description,
     slackLink: parsed.slackLink,
+    issueType: fields.issuetype?.name || "Bug",
     labels: (fields.labels || [])
       .map((l) => l.name || l)
       .filter((l) => !OMIT_LABELS.has(l)),
@@ -588,6 +589,9 @@ td.summary-col .summary-text {
 .badge-status-invalidation { background: #fff3e0; color: #e65100; }
 .badge-status-done { background: #e8f5e9; color: #2e7d32; }
 
+.badge-type-defect { background: #ffebee; color: #c62828; }
+.badge-type-enhancement { background: #e0f2f1; color: #00695c; }
+
 .badge-urgency { background: #fce4ec; color: #c62828; font-size: 10px; margin-left: 6px; }
 .badge-label { background: #e8eaf6; color: #283593; font-size: 10px; margin: 1px 2px; }
 
@@ -809,12 +813,15 @@ function getFilteredIssues() {
   // Search
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
-    issues = issues.filter(i =>
-      i.key.toLowerCase().includes(q) ||
-      i.summary.toLowerCase().includes(q) ||
-      i.assignee.toLowerCase().includes(q) ||
-      i.reportedBy.toLowerCase().includes(q)
-    );
+    issues = issues.filter(i => {
+      const isDefect = i.issueType === "Bug" || i.issueType === "Crash";
+      const typeLabel = isDefect ? "defect" : "enhancement";
+      return i.key.toLowerCase().includes(q) ||
+        i.summary.toLowerCase().includes(q) ||
+        i.assignee.toLowerCase().includes(q) ||
+        i.reportedBy.toLowerCase().includes(q) ||
+        typeLabel.includes(q);
+    });
   }
 
   return issues;
@@ -860,6 +867,9 @@ function sortIssues(issues, col, dir) {
     switch (col) {
       case "priority":
         cmp = priorityRank(a.priority) - priorityRank(b.priority);
+        break;
+      case "issueType":
+        cmp = (a.issueType || "").localeCompare(b.issueType || "");
         break;
       case "key":
         const aNum = parseInt(a.key.split("-")[1]) || 0;
@@ -928,6 +938,7 @@ function escapeHtml(str) {
 function renderTableHead(containerId) {
   const cols = [
     { key: "priority", label: "Priority" },
+    { key: "issueType", label: "Type" },
     { key: "key", label: "Ticket" },
     { key: "summary", label: "Summary" },
     { key: "reportedBy", label: "Reported By" },
@@ -976,8 +987,13 @@ function renderTableBody(containerId, issues, emptyId) {
     const tooltipAttr = i.descriptionText ? \` data-tooltip="\${escapeHtml(i.descriptionText.substring(0, 300))}"\` : "";
     const summaryCell = \`<td class="summary-col"><span class="tooltip-wrap summary-text"\${tooltipAttr}>\${escapeHtml(i.summary)}\${urgencyBadge}</span></td>\`;
 
+    const isDefect = i.issueType === "Bug" || i.issueType === "Crash";
+    const typeLabel = isDefect ? "Defect" : "Enhancement";
+    const typeBadgeClass = isDefect ? "badge badge-type-defect" : "badge badge-type-enhancement";
+
     return \`<tr>
       <td><span class="\${priorityBadgeClass(i.priority)}">\${escapeHtml(i.priority)}</span></td>
+      <td><span class="\${typeBadgeClass}">\${typeLabel}</span></td>
       <td class="key-col"><a href="\${escapeHtml(i.url)}" target="_blank" rel="noopener">\${escapeHtml(i.key)}</a></td>
       \${summaryCell}
       <td>\${escapeHtml(i.reportedBy)}</td>
